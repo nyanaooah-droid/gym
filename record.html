@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1417">
+<title>動作紀錄</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="page">
+  <div class="rec-bar">
+    <a class="icon-btn" href="index.html" aria-label="返回">‹</a>
+    <h1 id="ex-title"></h1>
+    <button class="icon-btn" id="hist-btn" type="button" aria-label="歷史紀錄"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
+  </div>
+  <div class="date-row">📅 日期 <b id="date-text"></b></div>
+
+  <div class="sets-head"><span>組數</span><span>重量 kg</span><span>次數</span><span></span></div>
+  <div id="sets"></div>
+
+  <section class="rest" id="rest">
+    <div><p class="label">組間休息</p><p class="rest-time" id="rest-time">01:30</p></div>
+    <div class="rest-ctl">
+      <button class="pill" id="rest-minus" type="button">-30秒</button>
+      <button class="play" id="rest-play" type="button" aria-label="開始或暫停">▶</button>
+      <button class="pill" id="rest-plus" type="button">+30秒</button>
+    </div>
+  </section>
+
+  <button class="add-set" id="add-set" type="button">＋ 新增一組</button>
+  <button class="save" id="save" type="button">儲存記錄</button>
+</main>
+<div class="sheet" id="sheet" hidden><div class="sheet-in" id="sheet-in"></div></div>
+<script src="shared.js"></script>
+<script>
+renderNav('home');
+const idx = Number(new URLSearchParams(location.search).get('i'));
+const workout = load(KEY_ACTIVE, null);
+const ex = workout?.exercises?.[idx];
+if (!ex) location.replace('index.html');
+else {
+  $('ex-title').textContent = ex.name;
+  document.title = ex.name;
+  const now = new Date();
+  $('date-text').textContent = `今天・${dateKey(now)}`;
+  let sets = (ex.sets && ex.sets.length) ? ex.sets.map(s => ({...s})) : [{kg:0, reps:0}];
+
+  const drawSets = () => {
+    $('sets').innerHTML = sets.map((s, i) =>
+      `<div class="set-row"><span class="set-no">${i+1}</span>
+        <input type="number" inputmode="decimal" min="0" step="any" data-i="${i}" data-k="kg" value="${s.kg}" aria-label="第${i+1}組重量">
+        <input type="number" inputmode="numeric" min="0" step="1" data-i="${i}" data-k="reps" value="${s.reps}" aria-label="第${i+1}組次數">
+        ${sets.length > 1 ? `<button class="set-del" data-del="${i}" type="button" aria-label="刪除第${i+1}組">✕</button>` : '<span></span>'}</div>`
+    ).join('');
+  };
+  $('sets').addEventListener('input', e => {
+    const t = e.target; if (!t.dataset.k) return;
+    sets[t.dataset.i][t.dataset.k] = Math.max(0, parseFloat(t.value) || 0);
+  });
+  $('sets').addEventListener('focusin', e => { if (e.target.value === '0') e.target.select(); });
+  $('sets').addEventListener('click', e => {
+    const d = e.target.closest('[data-del]'); if (!d) return;
+    sets.splice(Number(d.dataset.del), 1); drawSets();
+  });
+  $('add-set').onclick = () => { const l = sets[sets.length-1]; sets.push({kg: l.kg, reps: l.reps}); drawSets(); };
+  $('save').onclick = () => {
+    const w = load(KEY_ACTIVE, null); if (!w || !w.exercises[idx]) return location.replace('index.html');
+    w.exercises[idx].sets = sets.filter(s => s.kg > 0 || s.reps > 0);
+    save(KEY_ACTIVE, w);
+    location.href = 'index.html';
+  };
+
+  // Rest timer
+  let rest = 90, left = 90, timer = null, endAt = 0;
+  const showRest = () => {
+    $('rest-time').textContent = `${pad(Math.floor(left/60))}:${pad(left%60)}`;
+    $('rest').classList.toggle('run', !!timer);
+    $('rest-play').textContent = timer ? '❚❚' : '▶';
+  };
+  const stop = () => { clearInterval(timer); timer = null; };
+  $('rest-play').onclick = () => {
+    if (timer) { stop(); showRest(); return; }
+    if (left <= 0) left = rest;
+    endAt = Date.now() + left * 1000;
+    timer = setInterval(() => {
+      left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      if (left === 0) { stop(); left = rest; try { navigator.vibrate?.([300,100,300]); } catch {} }
+      showRest();
+    }, 250);
+    showRest();
+  };
+  const adj = n => {
+    rest = Math.max(30, rest + n);
+    if (timer) { endAt += n * 1000; left = Math.max(1, Math.ceil((endAt - Date.now()) / 1000)); } else left = rest;
+    showRest();
+  };
+  $('rest-minus').onclick = () => adj(-30);
+  $('rest-plus').onclick = () => adj(30);
+
+  // Past records of this exercise
+  $('hist-btn').onclick = () => {
+    const rows = load(KEY_HISTORY, []).slice().reverse().flatMap(h =>
+      (h.exercises || []).filter(e => e.name === ex.name && e.part === ex.part && e.sets?.length).map(e => ({date: h.date, sets: e.sets})));
+    $('sheet-in').innerHTML = `<h3>${ex.name}・歷史紀錄</h3>` + (rows.length
+      ? rows.map(r => `<div class="rec"><p>${r.date}</p><ul>${r.sets.map((s,i) => `<li>第 ${i+1} 組　${s.kg} kg × ${s.reps}</li>`).join('')}</ul></div>`).join('')
+      : '<p class="empty-note">還沒有這個動作的歷史紀錄</p>');
+    $('sheet').hidden = false;
+  };
+  $('sheet').onclick = e => { if (e.target === $('sheet')) $('sheet').hidden = true; };
+  drawSets(); showRest();
+}
+</script>
+</body>
+</html>

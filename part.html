@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1417">
+<title>動作選擇</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="page">
+  <a class="back" href="index.html">← 返回</a>
+  <h1 id="part-title"></h1>
+  <p class="hint">選擇要練的動作</p>
+  <ul class="ex-list" id="ex-list"></ul>
+</main>
+<script src="shared.js"></script>
+<script>
+renderNav('home');
+const part = PARTS.find(p => p.id === new URLSearchParams(location.search).get('part'));
+if (!part) { location.replace('index.html'); }
+else {
+  $('part-title').textContent = part.name;
+  document.title = part.name + '・動作選擇';
+  const isSel = name => (load(KEY_ACTIVE, null)?.exercises || []).some(e => e.part === part.id && e.name === name);
+  const draw = () => {
+    $('ex-list').innerHTML = EXERCISES[part.id].map(n =>
+      `<li><button type="button" class="ex${isSel(n)?' sel':''}" data-name="${n}"><span>${n}</span><span class="mark">${isSel(n)?'✓':''}</span></button></li>`
+    ).join('');
+  };
+  $('ex-list').addEventListener('click', e => {
+    const b = e.target.closest('.ex'); if (!b) return;
+    const w = load(KEY_ACTIVE, null) || {startedAt: new Date().toISOString(), exercises: []};
+    const name = b.dataset.name, i = w.exercises.findIndex(x => x.part === part.id && x.name === name);
+    if (i >= 0) w.exercises.splice(i, 1); else w.exercises.push({part: part.id, name});
+    save(KEY_ACTIVE, w);
+    draw();
+  });
+  draw();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1417">
+<title>今天練什麼？</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="home">
+  <h1>今天練什麼？💪</h1>
+  <p class="date" id="today-date"></p>
+
+  <section class="card status" id="status-card" aria-live="polite">
+    <p class="label">今日訓練</p>
+    <p class="status-main" id="status-main"></p>
+    <div class="stats" id="stats" hidden>
+      <div><p class="stat-v" id="stat-time"></p><p class="stat-l">時間</p></div>
+      <div><p class="stat-v" id="stat-count"></p><p class="stat-l">動作</p></div>
+    </div>
+    <div class="ex-cards" id="ex-cards" hidden></div>
+    <button class="finish" id="finish-btn" type="button" hidden>完成今日訓練</button>
+  </section>
+
+  <section class="card week">
+    <p class="label">本週訓練</p>
+    <p class="week-count"><span id="week-count">0</span> 天</p>
+  </section>
+
+  <button class="cta" id="cta" type="button">開始訓練</button>
+
+  <section id="parts-section">
+    <h2>訓練部位</h2>
+    <div class="grid" id="parts-grid"></div>
+  </section>
+</main>
+<script src="shared.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
