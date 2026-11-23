@@ -57,9 +57,14 @@ function drawDetail(){
   if (!recs) html += '<p class="empty-note">這天沒有訓練紀錄</p>';
   else {
     const groups = {};
-    for (const r of recs) for (const e of r.exercises || []) (groups[e.part] ||= []).push(e);
+    let n = 0, ms = 0;
+    for (const r of recs) { ms += r.durationMs || 0; for (const e of r.exercises || []) { (groups[e.part] ||= []).push(e); n++; } }
+    const mins = Math.round(ms / 60000);
+    html += `<p class="day-sum">${n} 個動作${mins ? '・' + mins + ' 分鐘' : ''}</p>`;
     html += PARTS.filter(p => groups[p.id]).map(p =>
-      `<div class="rec"><p class="part-name">${p.name}</p><ul>${groups[p.id].map(e => `<li>${e.name}${e.sets?.length ? `<br><small class="sets-line">${e.sets.map(s => `${s.kg}kg×${s.reps}${restMinutes(s) ? '（休' + restMinutes(s) + '分）' : ''}`).join('、')}</small>` : ''}</li>`).join('')}</ul></div>`
+      `<div class="rec"><p class="part-name">${p.name}</p><ul>${groups[p.id].map(e =>
+        `<li><span class="ex-title">${e.name}</span>${(e.sets || []).map((s, i) =>
+          `<span class="set-line">第 ${i+1} 組　${s.kg} kg × ${s.reps}${restMinutes(s) ? `<em>休息 ${restMinutes(s)} 分</em>` : ''}</span>`).join('')}</li>`).join('')}</ul></div>`
     ).join('');
   }
   $('detail').innerHTML = html;
@@ -67,6 +72,7 @@ function drawDetail(){
 $('cal').addEventListener('click', e => {
   const b = e.target.closest('.day[data-date]'); if (!b) return;
   selected = b.dataset.date; draw();
+  $('detail').scrollIntoView({behavior: 'smooth', block: 'start'}); // the list sits below the calendar, bring it into view
 });
 const shift = n => { month += n; if (month < 0) { month = 11; year--; } if (month > 11) { month = 0; year++; } draw(); };
 $('today-btn').onclick = () => { year = today.getFullYear(); month = today.getMonth(); selected = dateKey(today); draw(); };

@@ -199,3 +199,11 @@ html.auth-pending body>*:not(.gate){visibility:hidden}
 /* keep the last content clear of the fixed tab bar (must come after the .page shorthand above) */
 body>.home,body>.page{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 body>.page:has(+ .savebar){padding-bottom:calc(184px + env(safe-area-inset-bottom))}
+
+.day-detail{scroll-margin-top:12px}
+.day-sum{margin:-4px 0 12px;color:var(--muted);font-size:14px}
+.rec li{list-style:none;margin-bottom:10px}
+.rec ul{padding-left:0}
+.rec .ex-title{display:block;font-weight:600;margin-bottom:2px}
+.rec .set-line{display:flex;justify-content:space-between;gap:8px;padding:2px 0;color:var(--muted);font-size:14px}
+.rec .set-line em{font-style:normal;color:var(--accent)}
