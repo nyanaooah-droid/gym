@@ -16,6 +16,8 @@
   <section><h2 class="sec" id="all-title">全部動作</h2><div class="ex-grid" id="all-grid"></div></section>
 </main>
 <script src="shared.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module" src="cloud.js"></script>
 <script src="icons.js"></script>
 <script>
 renderNav('home');
@@ -45,6 +47,7 @@ else {
     save(KEY_FAV, [...favs]);
     draw();
   });
+  window.addEventListener('gym:synced', draw);
   draw();
 }
 </script>

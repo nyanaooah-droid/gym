@@ -21,11 +21,16 @@
   <section class="day-detail" id="detail"></section>
 </main>
 <script src="shared.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module" src="cloud.js"></script>
 <script>
 renderNav('history');
-const history = load(KEY_HISTORY, []);
 const byDate = {};
-for (const h of history) (byDate[h.date] ||= []).push(h);
+function rebuild(){
+  for (const k in byDate) delete byDate[k];
+  for (const h of load(KEY_HISTORY, [])) (byDate[h.date] ||= []).push(h);
+}
+rebuild();
 const today = new Date();
 let year = today.getFullYear(), month = today.getMonth(), selected = dateKey(today);
 
@@ -67,6 +72,7 @@ const shift = n => { month += n; if (month < 0) { month = 11; year--; } if (mont
 $('today-btn').onclick = () => { year = today.getFullYear(); month = today.getMonth(); selected = dateKey(today); draw(); };
 $('prev').onclick = () => shift(-1);
 $('next').onclick = () => shift(1);
+window.addEventListener('gym:synced', () => { rebuild(); draw(); });
 draw();
 </script>
 </body>

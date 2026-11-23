@@ -93,14 +93,13 @@ $('finish-btn').addEventListener('click', async () => {
   const msg = done.length ? '結束今天的訓練並存入紀錄？' : '還沒有任何動作紀錄，確定結束並放棄這次訓練？';
   if (!(await confirmDialog(msg, done.length ? '完成訓練' : '放棄訓練'))) return;
   if (done.length) {
-    const history = load(KEY_HISTORY, []);
-    history.push({date: dateKey(new Date(active.startedAt)), durationMs: Date.now() - new Date(active.startedAt), exercises: done});
-    save(KEY_HISTORY, history);
+    addWorkout({date: dateKey(new Date(active.startedAt)), durationMs: Date.now() - new Date(active.startedAt), exercises: done});
   }
-  try { localStorage.removeItem(KEY_ACTIVE); } catch {}
+  clearActive();
   toast(done.length ? '今日訓練已存入紀錄' : '已放棄這次訓練');
   render(); renderCards();
 });
 
 render(); renderCards();
+window.addEventListener('gym:synced', () => { render(); renderCards(); });
 setInterval(render, 30000);

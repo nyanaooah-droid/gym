@@ -26,7 +26,21 @@ const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate(
 function load(key, fallback){
   try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; }
 }
-function save(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+// cloud.js (loaded only when Firebase is configured) replaces these no-op hooks.
+const cloud = { onSave(){}, onAdd(){} };
+function save(key, val){
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  if (key === KEY_ACTIVE || key === KEY_FAV) cloud.onSave(key, val);
+}
+function clearActive(){
+  try { localStorage.removeItem(KEY_ACTIVE); } catch {}
+  cloud.onSave(KEY_ACTIVE, null);
+}
+function addWorkout(entry){
+  entry.id = entry.id || 'w' + Date.now();
+  const h = load(KEY_HISTORY, []); h.push(entry); save(KEY_HISTORY, h);
+  cloud.onAdd(entry);
+}
 
 function renderNav(active){
   const items = [

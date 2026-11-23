@@ -185,3 +185,13 @@ h2{font-size:18px;margin:28px 0 12px}
 .date-row{align-items:center}
 .date-row #cal-ic{display:inline-flex;color:var(--accent);font-size:20px}
 .range{margin-left:4px;color:var(--muted)}
+
+.top{display:flex;align-items:center;justify-content:space-between}
+.gate{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;background:var(--bg);text-align:center}
+.gate h1{margin:0;font-size:28px}
+.gate p{margin:0;color:var(--muted);line-height:1.6}
+.gate .cta{width:100%;max-width:320px;margin-top:12px}
+.gate .err{color:#f87171;font-size:14px}
+html.auth-pending body>*:not(.gate){visibility:hidden}
+.cta{padding:16px;border:0;border-radius:16px;background:var(--accent);color:var(--accent-ink);font:inherit;font-size:18px;font-weight:700;cursor:pointer}
+.cta:active{transform:scale(.97)}

@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Invite list: only accounts whose email is a document id in the `allowed` collection
+    // (managed by hand in the Firebase console) may use the app. Nobody can read `allowed` from the client.
+    function invited() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/allowed/$(request.auth.token.email));
+    }
+
+    // Each invited user can only read and write their own data.
+    match /users/{uid}/{document=**} {
+      allow read, write: if invited() && request.auth.uid == uid;
+    }
+  }
+}
