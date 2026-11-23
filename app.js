@@ -14,10 +14,22 @@ function weekDays(history, now){
   }
   return days.size;
 }
+function renderWeekDots(history, now){
+  const start = weekStart(now), today = dateKey(now), done = new Set(history.map(h => h.date));
+  const days = ['一','二','三','四','五','六','日'].map((n, i) => {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    return {n, d, k: dateKey(d)};
+  });
+  $('week-dots').innerHTML = days.map(({n, d, k}) =>
+    `<span class="wd${done.has(k) ? ' on' : ''}${k === today ? ' today' : ''}" title="${d.getMonth()+1}/${d.getDate()}"><em>${n}</em><i>${d.getDate()}</i></span>`
+  ).join('');
+  const f = days[0].d, l = days[6].d;
+  $('week-range').textContent = `　${f.getMonth()+1}/${f.getDate()} – ${l.getMonth()+1}/${l.getDate()}`;
+}
 function fmtElapsed(ms){
-  const s = Math.max(0, Math.floor(ms/1000));
-  const h = Math.floor(s/3600), m = Math.floor(s%3600/60);
-  return h ? `${h}:${pad(m)}:${pad(s%60)}` : `${pad(m)}:${pad(s%60)}`;
+  const m = Math.floor(Math.max(0, ms) / 60000);
+  if (m < 1) return '< 1 分';
+  return m >= 60 ? `${Math.floor(m/60)} 時 ${m%60} 分` : `${m} 分`;
 }
 const partName = id => PARTS.find(p => p.id === id)?.name || '';
 function setsSummary(sets){
@@ -33,8 +45,8 @@ function renderCards(){
   const list = $('ex-cards');
   const exs = active?.exercises || [];
   list.hidden = !exs.length;
-  list.innerHTML = exs.map((e, i) =>
-    `<a class="ex-card" href="record.html?i=${i}"><div><p class="ex-name">${e.name}</p><p class="ex-meta">${partName(e.part)}・${setsSummary(e.sets)}</p></div><span class="chev">›</span></a>`
+  list.innerHTML = exs.map(e =>
+    `<a class="ex-card" href="record.html?part=${e.part}&name=${encodeURIComponent(e.name)}"><div><p class="ex-name">${e.name}</p><p class="ex-meta">${partName(e.part)}・${setsSummary(e.sets)}</p></div><span class="chev">›</span></a>`
   ).join('');
 }
 
@@ -57,17 +69,17 @@ function render(){
   if (active) {
     $('status-main').textContent = '訓練進行中';
     stats(fmtElapsed(now - new Date(active.startedAt)), (active.exercises||[]).length);
-    $('cta').textContent = '繼續訓練';
   } else if (todayDone.length) {
-    $('status-main').textContent = '今日訓練已完成 ✅';
+    $('status-main').innerHTML = ICON.check + ' 今日訓練已完成';
     stats(Math.round(todayDone.reduce((n,h)=>n+(h.durationMs||0),0)/60000) + ' 分', todayDone.reduce((n,h)=>n+(h.exercises||[]).length,0));
-    $('cta').textContent = '開始訓練';
   } else {
     $('status-main').textContent = '今天還沒開始訓練';
     $('stats').hidden = true;
-    $('cta').textContent = '開始訓練';
   }
   $('week-count').textContent = weekDays(history, now);
+  renderWeekDots(history, now);
+  $('status-sub').textContent = active || todayDone.length ? '' : '從下方選擇今天要練的部位，記錄第一個動作就會開始計時';
+  $('status-sub').hidden = !$('status-sub').textContent;
 }
 
 renderNav('home');
@@ -75,26 +87,20 @@ $('parts-grid').innerHTML = PARTS.map(p =>
   `<a class="part" href="part.html?part=${p.id}"><svg viewBox="0 0 24 24" aria-hidden="true">${p.icon}</svg><span>${p.name}</span></a>`
 ).join('');
 
-$('cta').addEventListener('click', () => {
-  if (!load(KEY_ACTIVE, null)) save(KEY_ACTIVE, {startedAt: new Date().toISOString(), exercises: []});
-  render(); renderCards();
-  $('parts-section').scrollIntoView({behavior:'smooth'});
-  const g = $('parts-grid'); g.classList.remove('pulse'); void g.offsetWidth; g.classList.add('pulse');
-});
-
-$('finish-btn').addEventListener('click', () => {
+$('finish-btn').addEventListener('click', async () => {
   const active = load(KEY_ACTIVE, null); if (!active) return;
   const done = (active.exercises||[]).filter(e => e.sets && e.sets.length);
   const msg = done.length ? '結束今天的訓練並存入紀錄？' : '還沒有任何動作紀錄，確定結束並放棄這次訓練？';
-  if (!confirm(msg)) return;
+  if (!(await confirmDialog(msg, done.length ? '完成訓練' : '放棄訓練'))) return;
   if (done.length) {
     const history = load(KEY_HISTORY, []);
     history.push({date: dateKey(new Date(active.startedAt)), durationMs: Date.now() - new Date(active.startedAt), exercises: done});
     save(KEY_HISTORY, history);
   }
   try { localStorage.removeItem(KEY_ACTIVE); } catch {}
+  toast(done.length ? '今日訓練已存入紀錄' : '已放棄這次訓練');
   render(); renderCards();
 });
 
 render(); renderCards();
-setInterval(render, 1000);
+setInterval(render, 30000);

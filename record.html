@@ -10,105 +10,119 @@
 <body>
 <main class="page">
   <div class="rec-bar">
-    <a class="icon-btn" href="index.html" aria-label="返回">‹</a>
+    <a class="icon-btn" id="back-link" href="index.html" aria-label="返回">‹</a>
     <h1 id="ex-title"></h1>
     <button class="icon-btn" id="hist-btn" type="button" aria-label="歷史紀錄"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
   </div>
-  <div class="date-row">📅 日期 <b id="date-text"></b></div>
+  <div class="date-row"><span id="cal-ic"></span>日期 <b id="date-text"></b></div>
+  <div class="last-row" id="last-row" hidden><button class="last" id="last" type="button"></button><button class="chip" id="fill" type="button">帶入上次</button></div>
 
-  <div class="sets-head"><span>組數</span><span>重量 kg</span><span>次數</span><span></span></div>
+  <div class="sets-head"><span>組數</span><span>重量 kg</span><span>次數</span><span>休息 秒</span><span></span></div>
   <div id="sets"></div>
 
-  <section class="rest" id="rest">
-    <div><p class="label">組間休息</p><p class="rest-time" id="rest-time">01:30</p></div>
-    <div class="rest-ctl">
-      <button class="pill" id="rest-minus" type="button">-30秒</button>
-      <button class="play" id="rest-play" type="button" aria-label="開始或暫停">▶</button>
-      <button class="pill" id="rest-plus" type="button">+30秒</button>
-    </div>
-  </section>
-
   <button class="add-set" id="add-set" type="button">＋ 新增一組</button>
-  <button class="save" id="save" type="button">儲存記錄</button>
 </main>
+<div class="savebar"><button class="save" id="save" type="button">儲存記錄</button></div>
 <div class="sheet" id="sheet" hidden><div class="sheet-in" id="sheet-in"></div></div>
 <script src="shared.js"></script>
 <script>
 renderNav('home');
-const idx = Number(new URLSearchParams(location.search).get('i'));
-const workout = load(KEY_ACTIVE, null);
-const ex = workout?.exercises?.[idx];
-if (!ex) location.replace('index.html');
+const q = new URLSearchParams(location.search);
+const exPart = q.get('part'), exName = q.get('name');
+if (!PARTS.some(p => p.id === exPart) || !(EXERCISES[exPart] || []).includes(exName)) location.replace('index.html');
 else {
+  const ex = (load(KEY_ACTIVE, null)?.exercises || []).find(e => e.part === exPart && e.name === exName) || {part: exPart, name: exName};
+  $('cal-ic').innerHTML = ICON.calendar;
   $('ex-title').textContent = ex.name;
   document.title = ex.name;
-  const now = new Date();
-  $('date-text').textContent = `今天・${dateKey(now)}`;
-  let sets = (ex.sets && ex.sets.length) ? ex.sets.map(s => ({...s})) : [{kg:0, reps:0}];
+  $('back-link').href = 'part.html?part=' + exPart;
+  $('date-text').textContent = `今天・${dateKey(new Date())}`;
 
-  const drawSets = () => {
-    $('sets').innerHTML = sets.map((s, i) =>
-      `<div class="set-row"><span class="set-no">${i+1}</span>
-        <input type="number" inputmode="decimal" min="0" step="any" data-i="${i}" data-k="kg" value="${s.kg}" aria-label="第${i+1}組重量">
-        <input type="number" inputmode="numeric" min="0" step="1" data-i="${i}" data-k="reps" value="${s.reps}" aria-label="第${i+1}組次數">
-        ${sets.length > 1 ? `<button class="set-del" data-del="${i}" type="button" aria-label="刪除第${i+1}組">✕</button>` : '<span></span>'}</div>`
-    ).join('');
+  // Each row is one set: weight (kg), reps and a free-form rest time (seconds).
+  let rows = (ex.sets || []).map(x => ({kg: x.kg, reps: x.reps, rest: x.rest || 0}));
+  if (!rows.length) rows = [{kg: 0, reps: 0, rest: 0}];
+
+  let dirty = false;
+  const drawRows = () => {
+    $('sets').innerHTML = rows.map((r, i) => {
+      const n = i + 1;
+      return `<div class="set-row"><span class="set-no">${n}</span>
+        <input type="number" inputmode="decimal" min="0" step="any" data-i="${i}" data-k="kg" value="${r.kg || ''}" placeholder="0" aria-label="第${n}組重量">
+        <input type="number" inputmode="numeric" min="0" step="1" data-i="${i}" data-k="reps" value="${r.reps || ''}" placeholder="0" aria-label="第${n}組次數">
+        <input type="number" inputmode="numeric" min="0" step="5" data-i="${i}" data-k="rest" value="${r.rest || ''}" placeholder="0" aria-label="第${n}組休息秒數">
+        ${rows.length > 1 ? `<button class="set-del" data-del="${i}" type="button" aria-label="刪除第${n}組">${ICON.x}</button>` : '<span></span>'}</div>`;
+    }).join('');
   };
   $('sets').addEventListener('input', e => {
     const t = e.target; if (!t.dataset.k) return;
-    sets[t.dataset.i][t.dataset.k] = Math.max(0, parseFloat(t.value) || 0);
+    rows[t.dataset.i][t.dataset.k] = Math.max(0, parseFloat(t.value) || 0);
+    dirty = true;
   });
-  $('sets').addEventListener('focusin', e => { if (e.target.value === '0') e.target.select(); });
   $('sets').addEventListener('click', e => {
     const d = e.target.closest('[data-del]'); if (!d) return;
-    sets.splice(Number(d.dataset.del), 1); drawSets();
+    rows.splice(Number(d.dataset.del), 1);
+    if (!rows.length) rows = [{kg: 0, reps: 0, rest: 0}];
+    dirty = true;
+    drawRows();
   });
-  $('add-set').onclick = () => { const l = sets[sets.length-1]; sets.push({kg: l.kg, reps: l.reps}); drawSets(); };
+  $('add-set').onclick = () => {
+    const l = rows[rows.length - 1];
+    rows.push({kg: l.kg, reps: l.reps, rest: l.rest});
+    dirty = true;
+    drawRows();
+    window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+  };
+
   $('save').onclick = () => {
-    const w = load(KEY_ACTIVE, null); if (!w || !w.exercises[idx]) return location.replace('index.html');
-    w.exercises[idx].sets = sets.filter(s => s.kg > 0 || s.reps > 0);
-    save(KEY_ACTIVE, w);
-    location.href = 'index.html';
+    const clean = rows.filter(r => r.kg > 0 || r.reps > 0)
+      .map(r => r.rest > 0 ? {kg: r.kg, reps: r.reps, rest: r.rest} : {kg: r.kg, reps: r.reps});
+    const w = load(KEY_ACTIVE, null) || {startedAt: new Date().toISOString(), exercises: []};
+    const i = w.exercises.findIndex(e => e.part === exPart && e.name === exName);
+    if (clean.length) {
+      if (i >= 0) w.exercises[i].sets = clean; else w.exercises.push({part: exPart, name: exName, sets: clean});
+    } else if (i >= 0) w.exercises.splice(i, 1);
+    if (w.exercises.length || load(KEY_ACTIVE, null)) save(KEY_ACTIVE, w);
+    toastNext(`已儲存 ${exName}`);
+    dirty = false;
+    location.href = 'part.html?part=' + exPart;
   };
 
-  // Rest timer
-  let rest = 90, left = 90, timer = null, endAt = 0;
-  const showRest = () => {
-    $('rest-time').textContent = `${pad(Math.floor(left/60))}:${pad(left%60)}`;
-    $('rest').classList.toggle('run', !!timer);
-    $('rest-play').textContent = timer ? '❚❚' : '▶';
-  };
-  const stop = () => { clearInterval(timer); timer = null; };
-  $('rest-play').onclick = () => {
-    if (timer) { stop(); showRest(); return; }
-    if (left <= 0) left = rest;
-    endAt = Date.now() + left * 1000;
-    timer = setInterval(() => {
-      left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-      if (left === 0) { stop(); left = rest; try { navigator.vibrate?.([300,100,300]); } catch {} }
-      showRest();
-    }, 250);
-    showRest();
-  };
-  const adj = n => {
-    rest = Math.max(30, rest + n);
-    if (timer) { endAt += n * 1000; left = Math.max(1, Math.ceil((endAt - Date.now()) / 1000)); } else left = rest;
-    showRest();
-  };
-  $('rest-minus').onclick = () => adj(-30);
-  $('rest-plus').onclick = () => adj(30);
+  // Warn before leaving with unsaved changes
+  $('back-link').addEventListener('click', async e => {
+    if (!dirty) return;
+    e.preventDefault();
+    if (await confirmDialog('還沒儲存，確定要離開嗎？', '離開')) { dirty = false; location.href = $('back-link').href; }
+  });
 
-  // Past records of this exercise
-  $('hist-btn').onclick = () => {
-    const rows = load(KEY_HISTORY, []).slice().reverse().flatMap(h =>
-      (h.exercises || []).filter(e => e.name === ex.name && e.part === ex.part && e.sets?.length).map(e => ({date: h.date, sets: e.sets})));
-    $('sheet-in').innerHTML = `<h3>${ex.name}・歷史紀錄</h3>` + (rows.length
-      ? rows.map(r => `<div class="rec"><p>${r.date}</p><ul>${r.sets.map((s,i) => `<li>第 ${i+1} 組　${s.kg} kg × ${s.reps}</li>`).join('')}</ul></div>`).join('')
+  // Past records of this exercise, newest first
+  const past = load(KEY_HISTORY, []).slice()
+    .sort((x, y) => y.date.localeCompare(x.date))
+    .flatMap(h => (h.exercises || []).filter(e => e.name === ex.name && e.part === ex.part && e.sets?.length)
+      .map(e => ({date: h.date, sets: e.sets})));
+  const fmt = d => `${d}（週${'日一二三四五六'[new Date(d + 'T00:00:00').getDay()]}）`;
+  const line = s => `${s.kg}kg×${s.reps}`;
+  if (past.length) {
+    $('last-row').hidden = false;
+    $('last').textContent = `上次 ${past[0].date.slice(5).replace('-','/')}：${past[0].sets.map(line).join('、')}`;
+    $('fill').hidden = !!(ex.sets && ex.sets.length);
+    $('fill').onclick = () => {
+      rows = past[0].sets.map(x => ({kg: x.kg, reps: x.reps, rest: x.rest || 0}));
+      dirty = true; drawRows(); $('fill').hidden = true; toast('已帶入上次的組數');
+    };
+  }
+  const openHist = () => {
+    $('sheet-in').innerHTML = `<div class="sheet-head"><h3>${ex.name}・歷史紀錄</h3><button class="icon-btn" id="sheet-x" type="button" aria-label="關閉">${ICON.x}</button></div>` + (past.length
+      ? past.map(r => `<div class="rec"><p class="part-name">${fmt(r.date)}</p><ul>${r.sets.map((s,i) =>
+          `<li>第 ${i+1} 組　${s.kg} kg × ${s.reps}${s.rest ? `<br><small class="sets-line">休息 ${s.rest} 秒</small>` : ''}</li>`).join('')}</ul></div>`).join('')
       : '<p class="empty-note">還沒有這個動作的歷史紀錄</p>');
     $('sheet').hidden = false;
+    $('sheet-x').onclick = () => { $('sheet').hidden = true; };
   };
+  $('hist-btn').onclick = openHist;
+  $('last').onclick = openHist;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('sheet').hidden = true; });
   $('sheet').onclick = e => { if (e.target === $('sheet')) $('sheet').hidden = true; };
-  drawSets(); showRest();
+  drawRows();
 }
 </script>
 </body>

@@ -10,13 +10,14 @@
 <body>
 <main class="page">
   <h1>全年紀錄</h1>
-  <p class="year-sum" id="year-sum"></p>
+  <div class="sum-row"><p class="year-sum" id="year-sum"></p><button class="chip" id="today-btn" type="button">回到今天</button></div>
   <div class="cal-head">
     <button type="button" id="prev" aria-label="上個月">‹</button>
     <h2 id="month-title"></h2>
     <button type="button" id="next" aria-label="下個月">›</button>
   </div>
   <div class="cal" id="cal"></div>
+  <p class="legend"><i></i>有訓練紀錄</p>
   <section class="day-detail" id="detail"></section>
 </main>
 <script src="shared.js"></script>
@@ -63,6 +64,7 @@ $('cal').addEventListener('click', e => {
   selected = b.dataset.date; draw();
 });
 const shift = n => { month += n; if (month < 0) { month = 11; year--; } if (month > 11) { month = 0; year++; } draw(); };
+$('today-btn').onclick = () => { year = today.getFullYear(); month = today.getMonth(); selected = dateKey(today); draw(); };
 $('prev').onclick = () => shift(-1);
 $('next').onclick = () => shift(1);
 draw();

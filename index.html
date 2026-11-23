@@ -9,12 +9,13 @@
 </head>
 <body>
 <main class="home">
-  <h1>今天練什麼？💪</h1>
+  <h1>今天練什麼？</h1>
   <p class="date" id="today-date"></p>
 
   <section class="card status" id="status-card" aria-live="polite">
     <p class="label">今日訓練</p>
     <p class="status-main" id="status-main"></p>
+    <p class="status-sub" id="status-sub" hidden></p>
     <div class="stats" id="stats" hidden>
       <div><p class="stat-v" id="stat-time"></p><p class="stat-l">時間</p></div>
       <div><p class="stat-v" id="stat-count"></p><p class="stat-l">動作</p></div>
@@ -24,11 +25,10 @@
   </section>
 
   <section class="card week">
-    <p class="label">本週訓練</p>
+    <p class="label">本週訓練<span class="range" id="week-range"></span></p>
     <p class="week-count"><span id="week-count">0</span> 天</p>
+    <div class="week-dots" id="week-dots" aria-hidden="true"></div>
   </section>
-
-  <button class="cta" id="cta" type="button">開始訓練</button>
 
   <section id="parts-section">
     <h2>訓練部位</h2>

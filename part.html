@@ -11,29 +11,38 @@
 <main class="page">
   <a class="back" href="index.html">← 返回</a>
   <h1 id="part-title"></h1>
-  <p class="hint">選擇要練的動作</p>
-  <ul class="ex-list" id="ex-list"></ul>
+  <p class="hint">點選動作開始記錄，點星星加入收藏</p>
+  <section id="fav-section" hidden><h2 class="sec"><span class="sec-ic" id="fav-ic"></span>收藏</h2><div class="ex-grid" id="fav-grid"></div></section>
+  <section><h2 class="sec" id="all-title">全部動作</h2><div class="ex-grid" id="all-grid"></div></section>
 </main>
 <script src="shared.js"></script>
+<script src="icons.js"></script>
 <script>
 renderNav('home');
 const part = PARTS.find(p => p.id === new URLSearchParams(location.search).get('part'));
 if (!part) { location.replace('index.html'); }
 else {
+  $('fav-ic').innerHTML = ICON.star(true);
   $('part-title').textContent = part.name;
   document.title = part.name + '・動作選擇';
-  const isSel = name => (load(KEY_ACTIVE, null)?.exercises || []).some(e => e.part === part.id && e.name === name);
+  const favKey = n => part.id + '|' + n;
   const draw = () => {
-    $('ex-list').innerHTML = EXERCISES[part.id].map(n =>
-      `<li><button type="button" class="ex${isSel(n)?' sel':''}" data-name="${n}"><span>${n}</span><span class="mark">${isSel(n)?'✓':''}</span></button></li>`
-    ).join('');
+    const favs = new Set(load(KEY_FAV, []));
+    const done = new Set((load(KEY_ACTIVE, null)?.exercises || []).filter(e => e.part === part.id).map(e => e.name));
+    const card = n => `<div class="ex-tile${done.has(n)?' done':''}">
+      <a class="ex-open" href="record.html?part=${part.id}&name=${encodeURIComponent(n)}">${exerciseGif(n)}<span class="ex-tile-name">${n}</span>${done.has(n)?'<span class="ex-tile-tag">已記錄</span>':''}</a>
+      <button type="button" class="star${favs.has(favKey(n))?' on':''}" data-name="${n}" aria-label="收藏 ${n}" aria-pressed="${favs.has(favKey(n))}">${ICON.star(favs.has(favKey(n)))}</button></div>`;
+    const all = EXERCISES[part.id], fav = all.filter(n => favs.has(favKey(n))), rest = all.filter(n => !favs.has(favKey(n)));
+    $('fav-section').hidden = !fav.length;
+    $('fav-grid').innerHTML = fav.map(card).join('');
+    $('all-title').hidden = !fav.length;
+    $('all-grid').innerHTML = rest.map(card).join('');
   };
-  $('ex-list').addEventListener('click', e => {
-    const b = e.target.closest('.ex'); if (!b) return;
-    const w = load(KEY_ACTIVE, null) || {startedAt: new Date().toISOString(), exercises: []};
-    const name = b.dataset.name, i = w.exercises.findIndex(x => x.part === part.id && x.name === name);
-    if (i >= 0) w.exercises.splice(i, 1); else w.exercises.push({part: part.id, name});
-    save(KEY_ACTIVE, w);
+  document.querySelector('main').addEventListener('click', e => {
+    const b = e.target.closest('.star'); if (!b) return;
+    const favs = new Set(load(KEY_FAV, [])), k = favKey(b.dataset.name);
+    favs.has(k) ? favs.delete(k) : favs.add(k);
+    save(KEY_FAV, [...favs]);
     draw();
   });
   draw();

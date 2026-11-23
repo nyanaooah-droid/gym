@@ -17,6 +17,7 @@ const EXERCISES = {
 };
 
 const KEY_ACTIVE = 'gym.activeWorkout';
+const KEY_FAV = 'gym.favorites';
 const KEY_HISTORY = 'gym.history';
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,'0');
@@ -38,4 +39,46 @@ function renderNav(active){
     `<a href="${i.href}" class="${i.id===active?'on':''}"${i.id===active?' aria-current="page"':''}><svg viewBox="0 0 24 24" aria-hidden="true">${i.icon}</svg><span>${i.label}</span></a>`
   ).join('');
   document.body.appendChild(nav);
+  showPendingToast();
 }
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('out'), 1800);
+  setTimeout(() => t.remove(), 2200);
+}
+// A page can leave a message for the next page, e.g. after saving.
+function toastNext(msg){ try { sessionStorage.setItem('gym.toast', msg); } catch {} }
+function showPendingToast(){
+  try { const m = sessionStorage.getItem('gym.toast'); if (m) { sessionStorage.removeItem('gym.toast'); toast(m); } } catch {}
+}
+
+// In-page confirm dialog (native confirm() is blocked or ignored in some mobile browsers).
+function confirmDialog(message, okLabel = '確定', cancelLabel = '取消'){
+  return new Promise(resolve => {
+    const o = document.createElement('div');
+    o.className = 'dialog-bg';
+    o.innerHTML = `<div class="dialog" role="alertdialog" aria-modal="true"><p></p><div class="dialog-btns"><button type="button" class="d-cancel"></button><button type="button" class="d-ok"></button></div></div>`;
+    o.querySelector('p').textContent = message;
+    o.querySelector('.d-cancel').textContent = cancelLabel;
+    o.querySelector('.d-ok').textContent = okLabel;
+    const done = v => { o.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+    o.querySelector('.d-cancel').onclick = () => done(false);
+    o.querySelector('.d-ok').onclick = () => done(true);
+    o.addEventListener('click', e => { if (e.target === o) done(false); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(o);
+    o.querySelector('.d-ok').focus();
+  });
+}
+
+// Inline line icons (inherit currentColor) used instead of emoji.
+const ICON = {
+  star: filled => `<svg class="ic${filled ? ' fill' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>`,
+  x: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  check: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>`,
+  calendar: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`
+};
