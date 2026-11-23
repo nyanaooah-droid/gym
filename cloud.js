@@ -70,11 +70,20 @@ function start(cfg) {
       <button class="cta" type="button">使用 Google 登入</button><p class="err" role="alert"></p>`;
     gate.querySelector('.cta').onclick = async () => {
       const err = gate.querySelector('.err'); err.textContent = '';
-      try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      try { await signInWithPopup(auth, provider); }
       catch (e) {
-        if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')
-          return signInWithRedirect(auth, new GoogleAuthProvider());
-        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request')
+        // Redirect sign-in only works when the site is served from the auth domain itself
+        // (cross-site storage is partitioned elsewhere, e.g. on github.io), so use it only there.
+        const sameSite = location.hostname === cfg.authDomain || location.hostname.endsWith('.web.app');
+        if (sameSite && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment'))
+          return signInWithRedirect(auth, provider);
+        if (e.code === 'auth/popup-blocked')
+          err.textContent = '登入視窗被瀏覽器擋住了，請允許這個網站的彈出視窗後再按一次；如果是在 LINE、Instagram 等 App 內開啟，請改用 Safari 或 Chrome 開啟。';
+        else if (e.code === 'auth/unauthorized-domain')
+          err.textContent = '這個網址還沒有被授權登入，請聯絡管理者。';
+        else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request')
           err.textContent = '登入失敗，請再試一次（' + (e.code || e.message) + '）';
       }
     };
