@@ -96,3 +96,9 @@ const ICON = {
   check: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>`,
   calendar: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`
 };
+
+// Rest between sets is stored in minutes (restMin). Older records stored seconds in `rest`.
+function restMinutes(set){
+  if (set.restMin != null) return set.restMin;
+  return set.rest ? Math.round(set.rest / 60 * 10) / 10 : 0;
+}

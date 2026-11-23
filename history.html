@@ -59,7 +59,7 @@ function drawDetail(){
     const groups = {};
     for (const r of recs) for (const e of r.exercises || []) (groups[e.part] ||= []).push(e);
     html += PARTS.filter(p => groups[p.id]).map(p =>
-      `<div class="rec"><p class="part-name">${p.name}</p><ul>${groups[p.id].map(e => `<li>${e.name}${e.sets?.length ? `<br><small class="sets-line">${e.sets.map(s => `${s.kg}kg×${s.reps}`).join('、')}</small>` : ''}</li>`).join('')}</ul></div>`
+      `<div class="rec"><p class="part-name">${p.name}</p><ul>${groups[p.id].map(e => `<li>${e.name}${e.sets?.length ? `<br><small class="sets-line">${e.sets.map(s => `${s.kg}kg×${s.reps}${restMinutes(s) ? '（休' + restMinutes(s) + '分）' : ''}`).join('、')}</small>` : ''}</li>`).join('')}</ul></div>`
     ).join('');
   }
   $('detail').innerHTML = html;

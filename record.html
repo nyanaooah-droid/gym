@@ -17,7 +17,7 @@
   <div class="date-row"><span id="cal-ic"></span>日期 <b id="date-text"></b></div>
   <div class="last-row" id="last-row" hidden><button class="last" id="last" type="button"></button><button class="chip" id="fill" type="button">帶入上次</button></div>
 
-  <div class="sets-head"><span>組數</span><span>重量 kg</span><span>次數</span><span>休息 秒</span><span></span></div>
+  <div class="sets-head"><span>組數</span><span>重量 kg</span><span>次數</span><span>休息 分</span><span></span></div>
   <div id="sets"></div>
 
   <button class="add-set" id="add-set" type="button">＋ 新增一組</button>
@@ -40,8 +40,8 @@ else {
   $('back-link').href = 'part.html?part=' + exPart;
   $('date-text').textContent = `今天・${dateKey(new Date())}`;
 
-  // Each row is one set: weight (kg), reps and a free-form rest time (seconds).
-  let rows = (ex.sets || []).map(x => ({kg: x.kg, reps: x.reps, rest: x.rest || 0}));
+  // Each row is one set: weight (kg), reps and a free-form rest time (minutes).
+  let rows = (ex.sets || []).map(x => ({kg: x.kg, reps: x.reps, rest: restMinutes(x)}));
   if (!rows.length) rows = [{kg: 0, reps: 0, rest: 0}];
 
   let dirty = false;
@@ -51,7 +51,7 @@ else {
       return `<div class="set-row"><span class="set-no">${n}</span>
         <input type="number" inputmode="decimal" min="0" step="any" data-i="${i}" data-k="kg" value="${r.kg || ''}" placeholder="0" aria-label="第${n}組重量">
         <input type="number" inputmode="numeric" min="0" step="1" data-i="${i}" data-k="reps" value="${r.reps || ''}" placeholder="0" aria-label="第${n}組次數">
-        <input type="number" inputmode="numeric" min="0" step="5" data-i="${i}" data-k="rest" value="${r.rest || ''}" placeholder="0" aria-label="第${n}組休息秒數">
+        <input type="number" inputmode="decimal" min="0" step="0.5" data-i="${i}" data-k="rest" value="${r.rest || ''}" placeholder="0" aria-label="第${n}組休息分鐘">
         ${rows.length > 1 ? `<button class="set-del" data-del="${i}" type="button" aria-label="刪除第${n}組">${ICON.x}</button>` : '<span></span>'}</div>`;
     }).join('');
   };
@@ -77,7 +77,7 @@ else {
 
   $('save').onclick = () => {
     const clean = rows.filter(r => r.kg > 0 || r.reps > 0)
-      .map(r => r.rest > 0 ? {kg: r.kg, reps: r.reps, rest: r.rest} : {kg: r.kg, reps: r.reps});
+      .map(r => r.rest > 0 ? {kg: r.kg, reps: r.reps, restMin: r.rest} : {kg: r.kg, reps: r.reps});
     const w = load(KEY_ACTIVE, null) || {startedAt: new Date().toISOString(), exercises: []};
     const i = w.exercises.findIndex(e => e.part === exPart && e.name === exName);
     if (clean.length) {
@@ -108,14 +108,14 @@ else {
     $('last').textContent = `上次 ${past[0].date.slice(5).replace('-','/')}：${past[0].sets.map(line).join('、')}`;
     $('fill').hidden = !!(ex.sets && ex.sets.length);
     $('fill').onclick = () => {
-      rows = past[0].sets.map(x => ({kg: x.kg, reps: x.reps, rest: x.rest || 0}));
+      rows = past[0].sets.map(x => ({kg: x.kg, reps: x.reps, rest: restMinutes(x)}));
       dirty = true; drawRows(); $('fill').hidden = true; toast('已帶入上次的組數');
     };
   }
   const openHist = () => {
     $('sheet-in').innerHTML = `<div class="sheet-head"><h3>${ex.name}・歷史紀錄</h3><button class="icon-btn" id="sheet-x" type="button" aria-label="關閉">${ICON.x}</button></div>` + (past.length
       ? past.map(r => `<div class="rec"><p class="part-name">${fmt(r.date)}</p><ul>${r.sets.map((s,i) =>
-          `<li>第 ${i+1} 組　${s.kg} kg × ${s.reps}${s.rest ? `<br><small class="sets-line">休息 ${s.rest} 秒</small>` : ''}</li>`).join('')}</ul></div>`).join('')
+          `<li>第 ${i+1} 組　${s.kg} kg × ${s.reps}${restMinutes(s) ? `<br><small class="sets-line">休息 ${restMinutes(s)} 分鐘</small>` : ''}</li>`).join('')}</ul></div>`).join('')
       : '<p class="empty-note">還沒有這個動作的歷史紀錄</p>');
     $('sheet').hidden = false;
     $('sheet-x').onclick = () => { $('sheet').hidden = true; };

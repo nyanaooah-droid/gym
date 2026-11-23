@@ -195,3 +195,7 @@ h2{font-size:18px;margin:28px 0 12px}
 html.auth-pending body>*:not(.gate){visibility:hidden}
 .cta{padding:16px;border:0;border-radius:16px;background:var(--accent);color:var(--accent-ink);font:inherit;font-size:18px;font-weight:700;cursor:pointer}
 .cta:active{transform:scale(.97)}
+
+/* keep the last content clear of the fixed tab bar (must come after the .page shorthand above) */
+body>.home,body>.page{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+body>.page:has(+ .savebar){padding-bottom:calc(184px + env(safe-area-inset-bottom))}
